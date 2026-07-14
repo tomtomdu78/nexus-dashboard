@@ -1,0 +1,47 @@
+name: Mise à jour quotidienne NEXUS
+
+# Quand le workflow s'exécute
+on:
+  schedule:
+    # Tous les jours à 03:00 UTC (05:00 heure de Paris en été, 04:00 en hiver).
+    # Format cron : minute heure jour mois jour-semaine
+    - cron: "0 3 * * *"
+  # Permet aussi de le lancer manuellement depuis l'onglet Actions de GitHub
+  workflow_dispatch:
+
+# Autorise le workflow à publier sur GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Récupérer les données Shopify
+        env:
+          # Le secret SHOPIFY_STORES est défini dans les réglages du dépôt
+          # (Settings > Secrets and variables > Actions). Voir le README.
+          SHOPIFY_STORES: ${{ secrets.SHOPIFY_STORES }}
+        run: python scripts/fetch_data.py
+
+      - name: Générer le dashboard HTML
+        run: python scripts/build_dashboard.py
+
+      - name: Préparer l'artefact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Publier sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
